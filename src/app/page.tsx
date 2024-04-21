@@ -30,13 +30,9 @@ import { compile } from "@/sol/compiler";
 import { User } from "lucide-react";
 import { useAccount } from "wagmi";
 import Link from "next/link";
+import { UserSelection } from "./types/types";
 
-export enum UserSelection {
-  AI,
-  Compile,
-  Deploy,
-  Settings,
-}
+
 
 export default function Home() {
   const monacoRef = useRef(null);
@@ -55,7 +51,7 @@ pragma solidity ^0.8.19;`);
 
   const walletClient = createWalletClient({
     chain: morphSepolia,
-    transport: custom(window.ethereum),
+    transport: custom(window?.ethereum),
   });
 
   const publicClient = createPublicClient({

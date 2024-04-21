@@ -1,4 +1,4 @@
-import { UserSelection } from "@/app/page";
+import { UserSelection } from "@/app/types/types";
 import Image from "next/image";
 import Link from "next/link";
 import {
