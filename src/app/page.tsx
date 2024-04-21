@@ -1,113 +1,418 @@
+"use client";
+
 import Image from "next/image";
+import Editor from "@monaco-editor/react";
+import { useEffect, useRef, useState } from "react";
+import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
+import { Message, useAssistant } from "ai/react";
+import {
+  http,
+  Address,
+  Hash,
+  TransactionReceipt,
+  createPublicClient,
+  createWalletClient,
+  custom,
+  stringify,
+  Account,
+} from "viem";
+
+import { morphSepolia } from "viem/chains";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { compile } from "@/sol/compiler";
+import { User } from "lucide-react";
+import { useAccount } from "wagmi";
+import Link from "next/link";
+
+export enum UserSelection {
+  AI,
+  Compile,
+  Deploy,
+  Settings,
+}
 
 export default function Home() {
+  const monacoRef = useRef(null);
+  const [code, setCode] = useState(`//SPDX-License-Identfier: MIT
+pragma solidity ^0.8.19;`);
+  const [selection, setSelection] = useState<UserSelection>(UserSelection.AI);
+  const [showPanels, setShowPanels] = useState(false);
+  const [compiled, setCompiled] = useState(0);
+  const [byteCode, setByteCode] = useState("");
+  const [abi, setAbi] = useState("");
+  const [morphOrSolidity, setMorphOrSolidity] = useState("Morph");
+  const [route, setRoute] = useState("/doubt/morph/api");
+  const [hash, setHash] = useState<`0x${string}` | undefined>();
+  const [receipt, setReceipt] = useState<TransactionReceipt>();
+  const [deployed, setDeployed] = useState(0);
+
+  const walletClient = createWalletClient({
+    chain: morphSepolia,
+    transport: custom(window.ethereum),
+  });
+
+  const publicClient = createPublicClient({
+    chain: morphSepolia,
+    transport: http("https://rpc-testnet.morphl2.io"),
+  });
+
+  const deployTheContract = async () => {
+    setDeployed(1);
+
+    const [account] = await walletClient.getAddresses();
+
+    const hash = await walletClient.deployContract({
+      abi: JSON.parse(abi),
+      account: account, // Fix: Cast account to Account type
+      args: [],
+      bytecode: `0x${byteCode}`, // Fix: Assign byteCode as a string
+    });
+
+    if (hash) {
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      setReceipt(receipt);
+    }
+
+    setDeployed(2);
+  };
+
+  useEffect(() => {
+    setCompiled(0);
+    setDeployed(0);
+  }, [code]);
+
+  const {
+    status: doubtStatus,
+    messages: doubtMessages,
+    input: doubtInput,
+    submitMessage: submitDoubt,
+    handleInputChange: handleDoubtInputChange,
+  } = useAssistant({ api: route });
+
+  const {
+    status: codegenStatus,
+    messages: codegenMessages,
+    input: codegenInput,
+    submitMessage: submitCodegen,
+    setInput: setCodegenInput,
+    handleInputChange: handleCodegenInputChange,
+  } = useAssistant({ api: "/generator/api/" });
+
+  const compileSourceCode = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setCompiled(() => 1);
+    compile(code)
+      .then((contractData) => {
+        setCompiled(() => 2);
+        const data = contractData[0];
+        setByteCode(() => data.byteCode);
+        setAbi(() => JSON.stringify(data.abi));
+      })
+      .catch((err) => {
+        setCompiled(() => 0);
+        alert(err);
+        console.error(err);
+      })
+      .finally(() => {
+        console.log("successfully compiled");
+      });
+  };
+
+  useEffect(() => {
+    console.log(codegenMessages);
+    if (
+      codegenMessages &&
+      codegenMessages[codegenMessages.length - 1]?.role == "assistant"
+    ) {
+      setCode(codegenMessages[codegenMessages.length - 1]?.content);
+    }
+  }, [codegenMessages]);
+
+  const generateContract = async () => {
+    setShowPanels(true);
+    setCode("// generating...");
+    setCodegenInput("write the code for " + codegenInput);
+    submitCodegen();
+
+    console.log(codegenMessages);
+  };
+
+  const askDoubt = async () => {
+    if (morphOrSolidity == "Morph") {
+      setRoute("/doubt/morph/api");
+    } else {
+      setRoute("/doubt/solidity/api");
+    }
+
+    submitDoubt();
+  };
+
+  useEffect(() => {
+    console.log(code);
+  }, [code]);
+
+  function handleEditorWillMount(monaco: any) {
+    monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
+  }
+
+  function handleEditorDidMount(editor: any, monaco: any) {
+    // here is another way to get monaco instance
+    // you can also store it in `useRef` for further usage
+    monacoRef.current = monaco;
+  }
+
+  function manualStart() {
+    setShowPanels(true);
+  }
+  useEffect(() => {
+    console.log(selection);
+  }, [selection]);
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div suppressHydrationWarning>
+      <Navbar />
+      <Sidebar selection={selection} setSelection={setSelection} />
+
+      <div className="flex h-[100vh] pl-14 pt-[3.5rem]">
+        {showPanels ? (
+          <ResizablePanelGroup
+            direction="horizontal"
+            className="w-full  rounded-lg"
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
+            <ResizablePanel defaultSize={20} className=" !overflow-y-auto">
+              <div className="flex flex-col h-full items-center gap-5 p-6 text-gray-100">
+                <span className="font-semibold text-center">
+                  {selection == UserSelection.AI && "AI Assistant"}
+                  {selection == UserSelection.Compile && "Compile Contract"}
+                  {selection == UserSelection.Deploy && "Deploy Contract"}
+                  {selection == UserSelection.Settings && "Settings"}
+                </span>
+                <div>
+                  {selection == UserSelection.AI && (
+                    <div className="flex flex-col gap-12 items-center">
+                      <div className="flex flex-col gap-2 items-center">
+                        <form
+                          onSubmit={submitCodegen}
+                          className="flex flex-col gap-2 items-center"
+                        >
+                          <label className="self-start text-sm">
+                            Generate contract with AI
+                          </label>
+                          <textarea
+                            value={codegenInput}
+                            onChange={handleCodegenInputChange}
+                            className="flex rounded-md border-slate-200 px-3 py-2 
+              text-sm ring-offset-white file:border-0  placeholder:text-slate-500
+              disabled:cursor-not-allowed disabled:opacity-50
+              !border-r-0 bg-black outline-none border-0 rounded-r-none w-60 h-12"
+                            placeholder="ERC20 token contract"
+                          />
+                          <button
+                            onClick={generateContract}
+                            className="bg-violet-800 py-1 px-2 rounded-md"
+                          >
+                            Generate
+                          </button>
+                        </form>
+                      </div>
+                      <div className="flex flex-col gap-2 items-center">
+                        <label className="self-start text-sm">Ask doubts</label>
+                        <div className="flex gap-1 self-start">
+                          <button
+                            onClick={() => setMorphOrSolidity("Morph")}
+                            className={`${
+                              morphOrSolidity == "Morph"
+                                ? "bg-[#00ff98] text-black"
+                                : "bg-gray-700"
+                            } px-2 py-1 rounded-md `}
+                          >
+                            Morph
+                          </button>
+                          <button
+                            onClick={() => setMorphOrSolidity("Solidity")}
+                            className={`${
+                              morphOrSolidity == "Solidity"
+                                ? "bg-[#00ff98] text-black"
+                                : "bg-gray-700"
+                            } px-2 py-1 rounded-md`}
+                          >
+                            Solidity
+                          </button>
+                        </div>
+                        <form
+                          onSubmit={submitDoubt}
+                          className="flex flex-col gap-2 items-center mb-4"
+                        >
+                          <textarea
+                            value={doubtInput}
+                            onChange={handleDoubtInputChange}
+                            className="flex rounded-md border-slate-200 px-3 py-2 
+                          text-sm ring-offset-white file:border-0  placeholder:text-slate-500
+                          disabled:cursor-not-allowed disabled:opacity-50
+                          !border-r-0 bg-black outline-none border-0 rounded-r-none w-60 h-12"
+                            placeholder={`Ask doubts about ${morphOrSolidity}`}
+                          />
+                          <button
+                            onClick={askDoubt}
+                            className="bg-violet-800  py-1 px-2 rounded-md"
+                          >
+                            Ask
+                          </button>
+                        </form>
+
+                        {doubtMessages.map((m: Message) => (
+                          <div
+                            key={m.id}
+                            className="whitespace-pre-wrap flex flex-col items-center text-center"
+                          >
+                            <strong>{`${m.role} `}</strong>
+                            {m.role !== "data" && m.content}
+                            {m.role === "data" && (
+                              <>
+                                {/* here you would provide a custom display for your app-specific data:*/}
+                                {(m.data as any).description}
+                                <br />
+                                <pre className={"bg-gray-200"}>
+                                  {JSON.stringify(m.data, null, 2)}
+                                </pre>
+                              </>
+                            )}
+                            <br />
+                            <br />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selection == UserSelection.Compile && (
+                    <div className="flex flex-col gap-2 items-center">
+                      <button
+                        className="bg-violet-800 h-12 w-24 px-3 py-1  rounded-md"
+                        onClick={compileSourceCode}
+                      >
+                        Compile
+                      </button>
+                      {compiled == 1 && "compiling..."}
+                      {compiled == 2 && "compiled successfully!"}
+                    </div>
+                  )}
+
+                  {selection == UserSelection.Deploy && (
+                    <div className="flex flex-col gap-2 items-center">
+                      <button
+                        className="bg-violet-800 h-12 w-24 px-3 py-1  rounded-md"
+                        onClick={deployTheContract}
+                      >
+                        Deploy
+                      </button>
+                      {deployed == 1 && "deploying..."}
+                      {deployed == 2 && "deployed successfully!"}
+                      {receipt && (
+                        <div>
+                          <span>View it </span>
+
+                          <Link
+                            className="text-violet-500"
+                            rel="noreferrer noopener"
+                            target="_blank"
+                            href={`https://explorer-testnet.morphl2.io/address/${receipt.contractAddress}`}
+                          >
+                            here
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {selection == UserSelection.Settings && (
+                      <div className="flex flex-col gap-12 items-center">
+                      <div className="flex flex-col gap-2 items-center">
+                        <div
+                          className="flex flex-col gap-2 items-center"
+                        >
+                          <label className="self-start text-sm">
+                            OpenAI key
+                          </label>
+                          <input
+                            value={codegenInput}
+                            onChange={handleCodegenInputChange}
+                            className="flex rounded-md border-slate-200 px-3 py-2 
+              text-sm ring-offset-white file:border-0  placeholder:text-slate-500
+              disabled:cursor-not-allowed disabled:opacity-50
+              !border-r-0 bg-black outline-none border-0 rounded-r-none w-60 h-8"
+                            placeholder="sk-xxxxxxx"
+                          />
+                          <button
+                            onClick={generateContract}
+                            className="bg-violet-800 py-1 px-2 rounded-md"
+                          >
+                            Set
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+                </div>
+                <div></div>
+              </div>
+            </ResizablePanel>
+            <ResizableHandle className="bg-slate-600" withHandle />
+            <ResizablePanel defaultSize={80} className="bg-[#1e1e1e] pt-5">
+              <Editor
+                className="text-white"
+                height="91vh"
+                defaultLanguage="sol"
+                defaultValue="//SPDX-License-Identfier: MIT
+                pragma solidity ^0.8.19;
+                "
+                theme="vs-dark"
+                value={code}
+                loading={<div className="text-white">Loading Editor...</div>}
+                beforeMount={handleEditorWillMount}
+                onMount={handleEditorDidMount}
+                onChange={(value, event) => {
+                  setCode(value as string);
+                }}
+              />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <div className=" w-full h-full gap-4 text-white flex flex-col justify-center items-center">
+            <form className="flex" onSubmit={generateContract}>
+              <input
+                onChange={handleCodegenInputChange}
+                value={codegenInput}
+                className="flex rounded-md border-slate-200 px-3 py-2 
+              text-sm ring-offset-white file:border-0  placeholder:text-slate-500
+              disabled:cursor-not-allowed disabled:opacity-50
+              !border-r-0 bg-black outline-none border-0 rounded-r-none w-[28rem] h-12"
+                placeholder="write contracts with AI"
+              />
+              <button
+                type="submit"
+                className="bg-[#00ff98] text-black h-12 w-20 rounded-r-md"
+              >
+                Go!
+              </button>
+            </form>
+            <div>OR</div>
+            <button
+              onClick={manualStart}
+              className="bg-violet-800 h-12 px-3 py-1  rounded-md"
+            >
+              Start Manually
+            </button>
+          </div>
+        )}
       </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    </div>
   );
 }
