@@ -10,6 +10,8 @@ const openai = new OpenAI({
 export const runtime = 'edge';
  
 export async function POST(req: Request) {
+
+  console.log("reached here")
   // Parse the request body
   const input: {
     threadId: string | null;

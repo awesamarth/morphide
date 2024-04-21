@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Editor from "@monaco-editor/react";
-import { useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import { Message, useAssistant } from "ai/react";
@@ -85,12 +85,20 @@ pragma solidity ^0.8.19;`);
   }, [code]);
 
   const {
-    status: doubtStatus,
-    messages: doubtMessages,
-    input: doubtInput,
-    submitMessage: submitDoubt,
-    handleInputChange: handleDoubtInputChange,
-  } = useAssistant({ api: route });
+    status: morphDoubtStatus,
+    messages: morphDoubtMessages,
+    input: morphDoubtInput,
+    submitMessage: morphSubmitDoubt,
+    handleInputChange: morphHandleDoubtInputChange,
+  } = useAssistant({ api: "/doubt/morph/api" });
+
+  const {
+    status: solidityDoubtStatus,
+    messages: solidityDoubtMessages,
+    input: solidityDoubtInput,
+    submitMessage: soliditySubmitDoubt,
+    handleInputChange: solidityHandleDoubtInputChange,
+  } = useAssistant({ api: "/doubt/solidity/api" });
 
   const {
     status: codegenStatus,
@@ -141,12 +149,14 @@ pragma solidity ^0.8.19;`);
 
   const askDoubt = async () => {
     if (morphOrSolidity == "Morph") {
-      setRoute("/doubt/morph/api");
+      console.log("Morph")
+      morphSubmitDoubt()
     } else {
-      setRoute("/doubt/solidity/api");
+      console.log("solidity")
+      soliditySubmitDoubt()
+      
     }
 
-    submitDoubt();
   };
 
   useEffect(() => {
@@ -166,6 +176,14 @@ pragma solidity ^0.8.19;`);
   function manualStart() {
     setShowPanels(true);
   }
+
+  useEffect(()=>{
+    
+  }, [morphOrSolidity])
+
+  useEffect(() => {
+    console.log(morphDoubtInput)
+  },[morphDoubtInput])
   useEffect(() => {
     console.log(selection);
   }, [selection]);
@@ -241,13 +259,12 @@ pragma solidity ^0.8.19;`);
                             Solidity
                           </button>
                         </div>
-                        <form
-                          onSubmit={submitDoubt}
+                        <div
                           className="flex flex-col gap-2 items-center mb-4"
                         >
                           <textarea
-                            value={doubtInput}
-                            onChange={handleDoubtInputChange}
+                            value={morphOrSolidity=="Morph"?morphDoubtInput:solidityDoubtInput}
+                            onChange={morphOrSolidity=="Morph"?morphHandleDoubtInputChange:solidityHandleDoubtInputChange}
                             className="flex rounded-md border-slate-200 px-3 py-2 
                           text-sm ring-offset-white file:border-0  placeholder:text-slate-500
                           disabled:cursor-not-allowed disabled:opacity-50
@@ -260,9 +277,10 @@ pragma solidity ^0.8.19;`);
                           >
                             Ask
                           </button>
-                        </form>
+                        </div>
 
-                        {doubtMessages.map((m: Message) => (
+                        {morphOrSolidity=="Morph"?
+                        morphDoubtMessages.map((m: Message) => (
                           <div
                             key={m.id}
                             className="whitespace-pre-wrap flex flex-col items-center text-center"
@@ -282,7 +300,30 @@ pragma solidity ^0.8.19;`);
                             <br />
                             <br />
                           </div>
-                        ))}
+                        )):
+                        solidityDoubtMessages.map((m: Message) => (
+                          <div
+                            key={m.id}
+                            className="whitespace-pre-wrap flex flex-col items-center text-center"
+                          >
+                            <strong>{`${m.role} `}</strong>
+                            {m.role !== "data" && m.content}
+                            {m.role === "data" && (
+                              <>
+                                {/* here you would provide a custom display for your app-specific data:*/}
+                                {(m.data as any).description}
+                                <br />
+                                <pre className={"bg-gray-200"}>
+                                  {JSON.stringify(m.data, null, 2)}
+                                </pre>
+                              </>
+                            )}
+                            <br />
+                            <br />
+                          </div>
+                        ))
+                        
+                        }
                       </div>
                     </div>
                   )}
