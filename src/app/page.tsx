@@ -49,10 +49,27 @@ pragma solidity ^0.8.19;`);
   const [receipt, setReceipt] = useState<TransactionReceipt>();
   const [deployed, setDeployed] = useState(0);
 
-  const walletClient = createWalletClient({
-    chain: morphSepolia,
-    transport: custom(window?.ethereum),
-  });
+  const {address} = useAccount()
+
+
+  let walletClient: any;
+  
+  useEffect(()=>{
+    if(window.ethereum){
+    console.log("eth")
+    walletClient = createWalletClient({
+      chain: morphSepolia,
+      transport: custom(window.ethereum),
+    });
+    console.log(address)
+  }
+  },[address])
+
+
+  useEffect(()=>{
+    console.log(walletClient)
+    
+  }, [walletClient])
 
   const publicClient = createPublicClient({
     chain: morphSepolia,
@@ -61,7 +78,7 @@ pragma solidity ^0.8.19;`);
 
   const deployTheContract = async () => {
     setDeployed(1);
-
+    console.log(walletClient)
     const [account] = await walletClient.getAddresses();
 
     const hash = await walletClient.deployContract({
@@ -129,7 +146,7 @@ pragma solidity ^0.8.19;`);
   };
 
   useEffect(() => {
-    console.log(codegenMessages);
+    // console.log(codegenMessages);
     if (
       codegenMessages &&
       codegenMessages[codegenMessages.length - 1]?.role == "assistant"
@@ -139,29 +156,30 @@ pragma solidity ^0.8.19;`);
   }, [codegenMessages]);
 
   const generateContract = async () => {
+    console.log(walletClient)
     setShowPanels(true);
     setCode("// generating...");
     setCodegenInput("write the code for " + codegenInput);
     submitCodegen();
 
-    console.log(codegenMessages);
+    // console.log(codegenMessages);
   };
 
   const askDoubt = async () => {
     if (morphOrSolidity == "Morph") {
-      console.log("Morph")
+      // console.log("Morph")
       morphSubmitDoubt()
     } else {
-      console.log("solidity")
+      // console.log("solidity")
       soliditySubmitDoubt()
       
     }
 
   };
 
-  useEffect(() => {
-    console.log(code);
-  }, [code]);
+  // useEffect(() => {
+  //   console.log(code);
+  // }, [code]);
 
   function handleEditorWillMount(monaco: any) {
     monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
@@ -181,12 +199,12 @@ pragma solidity ^0.8.19;`);
     
   }, [morphOrSolidity])
 
-  useEffect(() => {
-    console.log(morphDoubtInput)
-  },[morphDoubtInput])
-  useEffect(() => {
-    console.log(selection);
-  }, [selection]);
+  // useEffect(() => {
+  //   console.log(morphDoubtInput)
+  // },[morphDoubtInput])
+  // useEffect(() => {
+  //   console.log(selection);
+  // }, [selection]);
 
   return (
     <div suppressHydrationWarning>
