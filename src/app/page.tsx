@@ -18,7 +18,7 @@ import {
   Account,
 } from "viem";
 
-import { morphSepolia } from "viem/chains";
+import { morphHolesky } from "viem/chains";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -58,7 +58,7 @@ pragma solidity ^0.8.19;`);
     if(window.ethereum){
     console.log("eth")
     walletClient = createWalletClient({
-      chain: morphSepolia,
+      chain: morphHolesky,
       transport: custom(window.ethereum),
     });
     console.log(address)
@@ -72,8 +72,8 @@ pragma solidity ^0.8.19;`);
   }, [walletClient])
 
   const publicClient = createPublicClient({
-    chain: morphSepolia,
-    transport: http("https://rpc-testnet.morphl2.io"),
+    chain: morphHolesky,
+    transport: http(),
   });
 
   const deployTheContract = async () => {

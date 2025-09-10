@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "MorphIDE",
-  description: "AI powered IDE for deploying contracts to Morph Sepolia",
+  description: "AI powered IDE for deploying contracts to Morph Holesky Testnet",
 };
 
 export default function RootLayout({

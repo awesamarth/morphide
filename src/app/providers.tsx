@@ -14,8 +14,9 @@ import {
   ledgerWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import {
-  sepolia,
-  morphSepolia,
+  
+
+  morphHolesky,
   foundry
 } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -35,7 +36,7 @@ export const config = getDefaultConfig({
     },
   ],
   chains: [
-    morphSepolia, sepolia, foundry
+    morphHolesky, foundry
   ],
   ssr: true,
 });
