@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { compile } from "@/sol/compiler";
 import { User } from "lucide-react";
-import { useAccount } from "wagmi";
+import { useAccount, useWalletClient } from "wagmi";
 import Link from "next/link";
 import { UserSelection } from "./types/types";
 
@@ -52,24 +52,17 @@ pragma solidity ^0.8.19;`);
   const {address} = useAccount()
 
 
-  let walletClient: any;
+  let walletClient = useWalletClient().data
   
   useEffect(()=>{
     if(window.ethereum){
-    console.log("eth")
-    walletClient = createWalletClient({
-      chain: morphHolesky,
-      transport: custom(window.ethereum),
-    });
-    console.log(address)
-  }
-  },[address])
 
-
-  useEffect(()=>{
+    console.log("window.ethereum console log")
+    console.log(address)  
     console.log(walletClient)
-    
-  }, [walletClient])
+  }
+  },[walletClient])
+
 
   const publicClient = createPublicClient({
     chain: morphHolesky,
@@ -79,9 +72,9 @@ pragma solidity ^0.8.19;`);
   const deployTheContract = async () => {
     setDeployed(1);
     console.log(walletClient)
-    const [account] = await walletClient.getAddresses();
+    const [account] = await walletClient!.getAddresses();
 
-    const hash = await walletClient.deployContract({
+    const hash = await walletClient!.deployContract({
       abi: JSON.parse(abi),
       account: account, // Fix: Cast account to Account type
       args: [],
@@ -377,7 +370,7 @@ pragma solidity ^0.8.19;`);
                             className="text-violet-500"
                             rel="noreferrer noopener"
                             target="_blank"
-                            href={`https://explorer-testnet.morphl2.io/address/${receipt.contractAddress}`}
+                            href={`https://explorer-holesky.morphl2.io/address/${receipt.contractAddress}`}
                           >
                             here
                           </Link>
